@@ -21,6 +21,8 @@ app.use((req, res, next) => {
 
 const transporter = nodemailer.createTransport({
     service: 'gmail',
+    port: 465,
+    secure: true,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
@@ -36,7 +38,7 @@ transporter.verify((error, success) => {
 });
 
 app.post('/send-email', async (req, res) => {
-    const { className, students } = req.body;
+    const { className, students, to } = req.body;
 
     // students is an array of objects with name and status properties
     if (!className || !students) {
@@ -50,7 +52,7 @@ app.post('/send-email', async (req, res) => {
 
         const info = await transporter.sendMail({
             from: `"João Vitor " <${process.env.EMAIL_USER}>`,
-            to: 'assessor5wizardviamao@gmail.com',
+            to: to || "joaobeck@grupobstech.com.br",
             subject: subject,
             html: htmlContent
         });
