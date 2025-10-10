@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import cors from "cors";
+import { Resend } from 'resend';
 import { buildAttendanceEmail } from './emailTemplate.js';
 
 dotenv.config();
@@ -19,26 +20,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        rejectUnauthorized: false          
-    }
-});
-
-transporter.verify((error, success) => {
-    if (error) {
-        console.log("Email connection failed: " + error);
-    } else {
-        console.log('Ready to send emails');
-    }
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.post('/send-email', async (req, res) => {
     const { className, students, to } = req.body;
@@ -53,14 +35,19 @@ app.post('/send-email', async (req, res) => {
         const subject = `Relatório de Presença - ${className} - ${date}`;
         const htmlContent = buildAttendanceEmail({ className, date, students });
 
-        const info = await transporter.sendMail({
-            from: `"João Vitor " <${process.env.EMAIL_USER}>`,
+        const {data, error} = await resend.emails.send({
+            from: 'João Vitor <jmadridbeck@gmail.com>',
             to: to || "joaobeck@grupobstech.com.br",
             subject: subject,
             html: htmlContent
         });
 
-    res.status(200).send(`Email sent: ${info.response}`);
+        if (error) {
+            console.error("Resend API error:", error);
+            return res.status(500).send(`Error sending email: ${error.message}`);
+        }
+
+    res.status(200).send(`Email sent: ${data.id}`);
     } catch (error) {
         console.error("Error sending email:", error);
         res.status(500).send(`Error sending email: ${error}`); 
