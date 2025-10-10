@@ -36,10 +36,11 @@ app.post('/send-email', async (req, res) => {
         const htmlContent = buildAttendanceEmail({ className, date, students });
 
         const {data, error} = await resend.emails.send({
-            from: 'João Vitor <jmadridbeck@gmail.com>',
+            from: 'João Vitor <noreply@onresend.com>',
             to: to || "joaobeck@grupobstech.com.br",
             subject: subject,
-            html: htmlContent
+            html: htmlContent,
+            replyTo: 'jmadridbeck@gmail.com'
         });
 
         if (error) {
