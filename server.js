@@ -2,7 +2,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import nodemailer from 'nodemailer';
 import cors from "cors";
-import { Resend } from 'resend';
 import { buildAttendanceEmail } from './emailTemplate.js';
 
 dotenv.config();
@@ -20,40 +19,34 @@ app.use((req, res, next) => {
   next();
 });
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+app.post("/send-email", async (req, res) => {
+  try {
+    const { className, to, students } = req.body;
 
-app.post('/send-email', async (req, res) => {
-    const { className, students, to } = req.body;
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-    // students is an array of objects with name and status properties
-    if (!className || !students) {
-        return res.status(400).send('Missing required fields: className, students');
-    }
-    
-    try {
-        const date = new Date().toLocaleDateString();
-        const subject = `Relatório de Presença - ${className} - ${date}`;
-        const htmlContent = buildAttendanceEmail({ className, date, students });
+    const date  = new Date().toLocaleDateString();
 
-        const {data, error} = await resend.emails.send({
-            from: 'João Vitor <noreply@onresend.com>',
-            to: to || "joaobeck@grupobstech.com.br",
-            subject: subject,
-            html: htmlContent,
-            replyTo: 'jmadridbeck@gmail.com'
-        });
+    const htmlContent = buildAttendanceEmail({ className, date, students });
 
-        if (error) {
-            console.error("Resend API error:", error);
-            return res.status(500).send(`Error sending email: ${error.message}`);
-        }
+    await transporter.sendMail({
+      from: `"João Vitor" <${process.env.EMAIL_USER}>`,
+      to: to || "joaobeck@grupobstech.com.br",
+      subject: `Relatório de Presença - ${className} (${date})`,
+      html: htmlContent,
+    });
 
-    res.status(200).send(`Email sent: ${data.id}`);
-    } catch (error) {
-        console.error("Error sending email:", error);
-        res.status(500).send(`Error sending email: ${error}`); 
-    }
-    
+    res.status(200).json({ message: "Email sent successfully!" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error sending email", error });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
